@@ -36,8 +36,14 @@ export default async (req) => {
 };
 
 async function telegram(method, data) {
+  const token = process.env.BOT_TOKEN;
+
+  if (!token) {
+    throw new Error("BOT_TOKEN پیدا نشد");
+  }
+
   const response = await fetch(
-    `https://api.telegram.org/bot${Netlify.env.get("BOT_TOKEN")}/${method}`,
+    `https://api.telegram.org/bot${token}/${method}`,
     {
       method: "POST",
       headers: {
@@ -187,7 +193,7 @@ async function handleCallback(query) {
     const [, month, day, place] = data.split("_");
 
     const user = query.from;
-    const adminChatId = Netlify.env.get("ADMIN_CHAT_ID");
+    const adminChatId = process.env.ADMIN_CHAT_ID;
 
     const adminMessage =
       `🦇 دیت جدید!\n\n` +
