@@ -1,6 +1,16 @@
 const MONTHS = [
-  "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
-  "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
+  "فروردین",
+  "اردیبهشت",
+  "خرداد",
+  "تیر",
+  "مرداد",
+  "شهریور",
+  "مهر",
+  "آبان",
+  "آذر",
+  "دی",
+  "بهمن",
+  "اسفند"
 ];
 
 const LOCATIONS = {
@@ -27,13 +37,19 @@ export default async (req) => {
       await handleCallback(update.callback_query);
     }
 
-    return new Response("OK", { status: 200 });
+    return new Response("OK", {
+      status: 200
+    });
 
   } catch (error) {
     console.error(error);
-    return new Response("OK", { status: 200 });
+
+    return new Response("OK", {
+      status: 200
+    });
   }
 };
+
 
 async function telegram(method, data) {
   const token = process.env.BOT_TOKEN;
@@ -56,10 +72,11 @@ async function telegram(method, data) {
   return response.json();
 }
 
+
 async function sendMessage(chatId, text, keyboard = null) {
   const data = {
     chat_id: chatId,
-    text
+    text: text
   };
 
   if (keyboard) {
@@ -71,6 +88,7 @@ async function sendMessage(chatId, text, keyboard = null) {
   return telegram("sendMessage", data);
 }
 
+
 async function handleMessage(message) {
   const chatId = message.chat.id;
   const text = message.text || "";
@@ -80,6 +98,7 @@ async function handleMessage(message) {
       chatId,
       `🆔 Chat ID شما:\n${chatId}`
     );
+
     return;
   }
 
@@ -89,13 +108,20 @@ async function handleMessage(message) {
       "🦇 با بتمن دیت میایی بری؟",
       [
         [
-          { text: "😎 آره میام", callback_data: "yes" },
-          { text: "😐 نه", callback_data: "no" }
+          {
+            text: "😎 آره میام",
+            callback_data: "yes"
+          },
+          {
+            text: "😐 نه",
+            callback_data: "no"
+          }
         ]
       ]
     );
   }
 }
+
 
 async function handleCallback(query) {
   const chatId = query.message.chat.id;
@@ -105,13 +131,16 @@ async function handleCallback(query) {
     callback_query_id: query.id
   });
 
+
   if (data === "no") {
     await sendMessage(
       chatId,
       "😔 حتی بتمن هم اینو انتظار نداشت...\nباشه، فعلاً 🦇"
     );
+
     return;
   }
+
 
   if (data === "yes") {
     await sendMessage(
@@ -119,22 +148,29 @@ async function handleCallback(query) {
       "🦇 عالیه!\nحالا ماه دیت رو انتخاب کن:",
       makeMonthKeyboard()
     );
+
     return;
   }
 
+
   if (data.startsWith("month_")) {
-    const month = Number(data.split("_")[1]);
+    const month = Number(
+      data.split("_")[1]
+    );
 
     await sendMessage(
       chatId,
       `📅 ماه ${MONTHS[month - 1]} انتخاب شد.\nحالا روز رو انتخاب کن:`,
       makeDayKeyboard(month)
     );
+
     return;
   }
 
+
   if (data.startsWith("day_")) {
-    const [, month, day] = data.split("_");
+    const [, month, day] =
+      data.split("_");
 
     await sendMessage(
       chatId,
@@ -143,28 +179,34 @@ async function handleCallback(query) {
         [
           {
             text: LOCATIONS.cafe,
-            callback_data: `place_${month}_${day}_cafe`
+            callback_data:
+              `place_${month}_${day}_cafe`
           }
         ],
         [
           {
             text: LOCATIONS.batmobile,
-            callback_data: `place_${month}_${day}_batmobile`
+            callback_data:
+              `place_${month}_${day}_batmobile`
           }
         ],
         [
           {
             text: LOCATIONS.decide,
-            callback_data: `place_${month}_${day}_decide`
+            callback_data:
+              `place_${month}_${day}_decide`
           }
         ]
       ]
     );
+
     return;
   }
 
+
   if (data.startsWith("place_")) {
-    const [, month, day, place] = data.split("_");
+    const [, month, day, place] =
+      data.split("_");
 
     await sendMessage(
       chatId,
@@ -175,7 +217,8 @@ async function handleCallback(query) {
         [
           {
             text: "✅ تأیید",
-            callback_data: `confirm_${month}_${day}_${place}`
+            callback_data:
+              `confirm_${month}_${day}_${place}`
           }
         ],
         [
@@ -186,14 +229,18 @@ async function handleCallback(query) {
         ]
       ]
     );
+
     return;
   }
 
+
   if (data.startsWith("confirm_")) {
-    const [, month, day, place] = data.split("_");
+    const [, month, day, place] =
+      data.split("_");
 
     const user = query.from;
-    const adminChatId = process.env.ADMIN_CHAT_ID;
+    const adminChatId =
+      process.env.ADMIN_CHAT_ID;
 
     const adminMessage =
       `🦇 دیت جدید!\n\n` +
@@ -204,7 +251,10 @@ async function handleCallback(query) {
       `💬 Chat ID: ${chatId}`;
 
     if (adminChatId) {
-      await sendMessage(adminChatId, adminMessage);
+      await sendMessage(
+        adminChatId,
+        adminMessage
+      );
     }
 
     await sendMessage(
@@ -216,31 +266,49 @@ async function handleCallback(query) {
   }
 }
 
+
 function makeMonthKeyboard() {
   const keyboard = [];
 
-  for (let i = 0; i < MONTHS.length; i += 3) {
+  for (
+    let i = 0;
+    i < MONTHS.length;
+    i += 3
+  ) {
     keyboard.push(
-      MONTHS.slice(i, i + 3).map((month, index) => ({
-        text: month,
-        callback_data: `month_${i + index + 1}`
-      }))
+      MONTHS
+        .slice(i, i + 3)
+        .map((month, index) => ({
+          text: month,
+          callback_data:
+            `month_${i + index + 1}`
+        }))
     );
   }
 
   return keyboard;
 }
 
+
 function makeDayKeyboard(month) {
   const days = [];
 
-  for (let i = 1; i <= 31; i += 7) {
+  for (
+    let i = 1;
+    i <= 31;
+    i += 7
+  ) {
     const row = [];
 
-    for (let j = i; j < i + 7 && j <= 31; j++) {
+    for (
+      let j = i;
+      j < i + 7 && j <= 31;
+      j++
+    ) {
       row.push({
         text: String(j),
-        callback_data: `day_${month}_${j}`
+        callback_data:
+          `day_${month}_${j}`
       });
     }
 
