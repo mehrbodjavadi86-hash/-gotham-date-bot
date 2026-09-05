@@ -1,8 +1,10 @@
 export default async () => {
-  const token = Netlify.env.get("BOT_TOKEN");
+  const token = process.env.BOT_TOKEN;
 
   if (!token) {
-    return new Response("BOT_TOKEN پیدا نشد", { status: 500 });
+    return new Response("BOT_TOKEN پیدا نشد", {
+      status: 500
+    });
   }
 
   const webhookUrl =
