@@ -1,72 +1,292 @@
 import os
-from datetime import datetime
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
-TOKEN = os.getenv('BOT_TOKEN', 'PASTE_BOT_TOKEN_HERE')
-ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID', 'PASTE_YOUR_CHAT_ID_HERE')
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند']
-PLACES = {'cafe':'☕ کافه','batmobile':'🦇 دور دور با بتموبیل','decide':'🤷 همون موقع تصمیم می‌گیریم'}
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN پیدا نشد")
 
-def month_keyboard():
-    return InlineKeyboardMarkup([[InlineKeyboardButton(m, callback_data=f'month:{i+1}') for i,m in enumerate(MONTHS[:4])],
-        [InlineKeyboardButton(m, callback_data=f'month:{i+1}') for i,m in enumerate(MONTHS[4:8], start=4)],
-        [InlineKeyboardButton(m, callback_data=f'month:{i+1}') for i,m in enumerate(MONTHS[8:], start=8)]])
 
-def day_keyboard(month):
-    days = 31 if month <= 6 else (30 if month <= 11 else 29)
-    rows=[]
-    for start in range(1, days+1, 7):
-        rows.append([InlineKeyboardButton(str(d), callback_data=f'day:{month}:{d}') for d in range(start,min(start+7,days+1))])
-    rows.append([InlineKeyboardButton('⬅️ ماه‌ها', callback_data='back:months')])
-    return InlineKeyboardMarkup(rows)
+MONTHS = [
+    "فروردین",
+    "اردیبهشت",
+    "خرداد",
+    "تیر",
+    "مرداد",
+    "شهریور",
+    "مهر",
+    "آبان",
+    "آذر",
+    "دی",
+    "بهمن",
+    "اسفند",
+]
+
+
+LOCATIONS = {
+    "cafe": "☕ کافه",
+    "batmobile": "🦇 دور دور با بتموبیل",
+    "decide": "🎲 همون موقع تصمیم می‌گیریم",
+}
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data.clear()
-    kb=InlineKeyboardMarkup([[InlineKeyboardButton('🦇 آره، بریم!', callback_data='yes')],[InlineKeyboardButton('😐 نه', callback_data='no')]])
-    await update.message.reply_text('🦇 GOTHAM DATE 🦇\n\nبتمن یه سؤال خیلی مهم داره...\n\nبا بتمن دیت میایی بری؟', reply_markup=kb)
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "😎 آره میام",
+                callback_data="yes"
+            ),
+            InlineKeyboardButton(
+                "😐 نه",
+                callback_data="no"
+            ),
+        ]
+    ]
 
-async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q=update.callback_query; await q.answer()
-    data=q.data
-    if data=='yes':
-        await q.edit_message_text('🦇 عالیه! حالا تاریخ دیت رو انتخاب کن:\n\nماه رو انتخاب کن 👇', reply_markup=month_keyboard())
-    elif data=='no':
-        await q.edit_message_text('😐 انتخابت محترمه...\n\nولی بتمن هنوز امیدشو از دست نداده 🦇\n\nاگه نظرت عوض شد دوباره /start رو بزن.')
-    elif data=='back:months':
-        await q.edit_message_text('ماه رو انتخاب کن 👇', reply_markup=month_keyboard())
-    elif data.startswith('month:'):
-        m=int(data.split(':')[1]); context.user_data['month']=m
-        await q.edit_message_text(f'📅 {MONTHS[m-1]}\n\nروز رو انتخاب کن 👇', reply_markup=day_keyboard(m))
-    elif data.startswith('day:'):
-        _,m,d=data.split(':'); context.user_data['date']=f'{int(d)} {MONTHS[int(m)-1]}'
-        kb=InlineKeyboardMarkup([[InlineKeyboardButton('☕ کافه',callback_data='place:cafe')],[InlineKeyboardButton('🦇 دور دور با بتموبیل',callback_data='place:batmobile')],[InlineKeyboardButton('🤷 همون موقع تصمیم می‌گیریم',callback_data='place:decide')]])
-        await q.edit_message_text(f'📅 تاریخ انتخاب شد: {context.user_data["date"]}\n\nحالا مکان رو انتخاب کن 📍', reply_markup=kb)
-    elif data.startswith('place:'):
-        key=data.split(':')[1]; context.user_data['place']=PLACES[key]
-        kb=InlineKeyboardMarkup([[InlineKeyboardButton('🦇 این روز و مکان رو تأیید می‌کنم',callback_data='confirm')],[InlineKeyboardButton('⬅️ انتخاب دوباره مکان',callback_data='retryplace')]])
-        await q.edit_message_text(f'📅 {context.user_data["date"]}\n📍 {context.user_data["place"]}\n\nهمه‌چی آماده‌ست. تأیید می‌کنی؟', reply_markup=kb)
-    elif data=='retryplace':
-        kb=InlineKeyboardMarkup([[InlineKeyboardButton('☕ کافه',callback_data='place:cafe')],[InlineKeyboardButton('🦇 دور دور با بتموبیل',callback_data='place:batmobile')],[InlineKeyboardButton('🤷 همون موقع تصمیم می‌گیریم',callback_data='place:decide')]])
-        await q.edit_message_text('📍 مکان رو انتخاب کن:', reply_markup=kb)
-    elif data=='confirm':
-        date=context.user_data.get('date'); place=context.user_data.get('place')
-        if not date or not place:
-            await q.edit_message_text('یه چیزی ناقصه 😅 دوباره /start رو بزن.')
-            return
-        user=update.effective_user
-        msg=f'🚨 BAT-SIGNAL 🚨\n\nیک نفر دیت رو تأیید کرد! 🦇\n\n📅 تاریخ: {date}\n📍 مکان: {place}\n👤 Telegram: @{user.username or "بدون یوزرنیم"}\n🆔 User ID: {user.id}'
-        if ADMIN_CHAT_ID.startswith('PASTE_'):
-            await q.edit_message_text('🦇 دیت با موفقیت ثبت شد!\n\n(ارسال اعلان برای صاحب بات هنوز تنظیم نشده.)')
-        else:
-            await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=msg)
-            await q.edit_message_text('🦇 ثبت شد!\n\nبتمن از تصمیم شما باخبر شد. 🚨🦇')
+    await update.message.reply_text(
+        "🦇 با بتمن دیت میایی بری؟",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
 
-if __name__=='__main__':
-    if 'PASTE_' in TOKEN:
-        print('BOT_TOKEN را تنظیم کن.')
-    app=Application.builder().token(TOKEN).build()
-    app.add_handler(CommandHandler('start', start))
-    app.add_handler(CallbackQueryHandler(callback))
-    app.run_polling()
+
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    await query.answer()
+
+    data = query.data
+
+    # -------------------------
+    # جواب نه
+    # -------------------------
+
+    if data == "no":
+        await query.message.reply_text(
+            "😔 حتی بتمن هم اینو انتظار نداشت...\n"
+            "باشه، فعلاً 🦇"
+        )
+        return
+
+    # -------------------------
+    # جواب آره
+    # -------------------------
+
+    if data == "yes":
+
+        keyboard = []
+
+        for i in range(0, 12, 3):
+
+            row = []
+
+            for j in range(i, min(i + 3, 12)):
+
+                row.append(
+                    InlineKeyboardButton(
+                        MONTHS[j],
+                        callback_data=f"month_{j + 1}",
+                    )
+                )
+
+            keyboard.append(row)
+
+        await query.message.reply_text(
+            "🦇 عالیه!\n"
+            "حالا ماه دیت رو انتخاب کن:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return
+
+    # -------------------------
+    # انتخاب ماه
+    # -------------------------
+
+    if data.startswith("month_"):
+
+        month = int(data.split("_")[1])
+
+        keyboard = []
+
+        for i in range(1, 32, 7):
+
+            row = []
+
+            for day in range(
+                i,
+                min(i + 7, 32)
+            ):
+
+                row.append(
+                    InlineKeyboardButton(
+                        str(day),
+                        callback_data=f"day_{month}_{day}",
+                    )
+                )
+
+            keyboard.append(row)
+
+        await query.message.reply_text(
+            f"📅 ماه {MONTHS[month - 1]} انتخاب شد.\n"
+            "حالا روز رو انتخاب کن:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return
+
+    # -------------------------
+    # انتخاب روز
+    # -------------------------
+
+    if data.startswith("day_"):
+
+        _, month, day = data.split("_")
+
+        keyboard = [
+
+            [
+                InlineKeyboardButton(
+                    "☕ کافه",
+                    callback_data=f"place_{month}_{day}_cafe",
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    "🦇 دور دور با بتموبیل",
+                    callback_data=f"place_{month}_{day}_batmobile",
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    "🎲 همون موقع تصمیم می‌گیریم",
+                    callback_data=f"place_{month}_{day}_decide",
+                )
+            ],
+        ]
+
+        await query.message.reply_text(
+            f"📅 تاریخ انتخابی:\n"
+            f"{day} {MONTHS[int(month) - 1]}\n\n"
+            "حالا محل دیت رو انتخاب کن:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return
+
+    # -------------------------
+    # انتخاب مکان
+    # -------------------------
+
+    if data.startswith("place_"):
+
+        _, month, day, place = data.split("_")
+
+        keyboard = [
+
+            [
+                InlineKeyboardButton(
+                    "✅ تأیید",
+                    callback_data=f"confirm_{month}_{day}_{place}",
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    "🔄 دوباره انتخاب می‌کنم",
+                    callback_data="yes",
+                )
+            ],
+        ]
+
+        await query.message.reply_text(
+            f"🦇 تاریخ: "
+            f"{day} {MONTHS[int(month) - 1]}\n"
+            f"📍 مکان: {LOCATIONS[place]}\n\n"
+            "همه‌چی اوکیه؟",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return
+
+    # -------------------------
+    # تأیید نهایی
+    # -------------------------
+
+    if data.startswith("confirm_"):
+
+        _, month, day, place = data.split("_")
+
+        admin_chat_id = os.getenv("ADMIN_CHAT_ID")
+
+        user = query.from_user
+
+        message = (
+            "🦇 دیت جدید!\n\n"
+            f"📅 تاریخ: "
+            f"{day} {MONTHS[int(month) - 1]}\n"
+            f"📍 مکان: {LOCATIONS[place]}\n\n"
+            f"👤 نام: {user.first_name or '-'}\n"
+            f"🆔 Username: @{user.username or '-'}\n"
+            f"💬 Chat ID: {query.message.chat.id}"
+        )
+
+        if admin_chat_id:
+
+            try:
+
+                await context.bot.send_message(
+                    chat_id=admin_chat_id,
+                    text=message,
+                )
+
+            except Exception as error:
+
+                print(
+                    "Admin message error:",
+                    error
+                )
+
+        await query.message.reply_text(
+            "🦇 ثبت شد!\n\n"
+            "بتمن تاریخ دیت رو توی BatComputer "
+            "ذخیره کرد. 😎\n\n"
+            "حالا فقط مونده سر قرار حاضر شی... 🦇"
+        )
+
+
+def main():
+
+    application = (
+        Application
+        .builder()
+        .token(BOT_TOKEN)
+        .build()
+    )
+
+    application.add_handler(
+        CommandHandler("start", start)
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(button)
+    )
+
+    print(
+        "🦇 Gotham Date Bot is running..."
+    )
+
+    application.run_polling()
+
+
+if __name__ == "__main__":
+    main()
