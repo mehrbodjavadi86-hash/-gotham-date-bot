@@ -11,7 +11,7 @@ const MONTHS = [
   "دی",
   "بهمن",
   "اسفند"
-];
+]
 
 const LOCATIONS = {
   cafe: "☕ کافه",
